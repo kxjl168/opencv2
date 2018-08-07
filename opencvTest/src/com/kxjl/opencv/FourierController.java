@@ -712,6 +712,77 @@ public class FourierController {
 		System.out.println("max gray:" + max);
 		return max;
 	}
+	
+	/**
+	 * 提取黑色字段
+	 * 
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	@FXML
+	private void caculBack() {
+		
+		Mat m = new Mat();
+		Mat filtered = new Mat();
+		Mat thresholdImg = new Mat();
+		Mat dilated_edges = new Mat();
+
+		Mat rectM = new Mat();
+		this.grayimage.copyTo(m);
+		this.image.copyTo(rectM);
+
+		m.copyTo(filtered);
+		// 滤波，模糊处理，消除某些背景干扰信息
+		Imgproc.blur(m, filtered, new Size(1, 1));	
+		
+		
+		int imgheight = rectM.height();
+		int imgwidth = rectM.width();
+
+		Mat hist2 = new Mat(imgheight, imgwidth, CvType.CV_8UC1);
+
+		Core.normalize(hist2, hist2, 0, hist2.rows(), Core.NORM_MINMAX, -1, new Mat());
+		double[] v2 = new double[imgwidth * imgheight];
+
+		for (int j = 0; j < imgwidth * imgheight; j++) {
+			v2[j] =255;
+		}
+		hist2.put(0, 0, v2);
+
+
+		double max = imgheight;// 0;
+		for (int j = 0; j < imgwidth; j++) {
+			for (int i = 0; i < imgheight; i++) {
+
+				try {
+					if (rectM.get(i, j)[0] <= 100 && rectM.get(i, j)[1] <= 100 &&rectM.get(i, j)[2] <= 100) {
+
+						hist2.put(i, j, 0);
+					} else {
+						//int k = 0;
+					}
+				} catch (Exception e) {
+					// TODO: handle exception
+				}
+				
+			}
+		}
+		
+		showImg(this.transformedImage2, hist2);
+
+		
+		
+		// 滤波，模糊处理，消除某些背景干扰信息
+		Imgproc.blur(hist2, hist2, new Size(1, 1));
+
+		// 腐蚀操作，消除某些背景干扰信息
+		 Imgproc.erode(hist2, hist2, new Mat(), new Point(-1, -1), 1);// 1, 1);
+		 Imgproc.dilate(hist2, hist2, new Mat(), new Point(-1, -1), 1);
+		
+		cacul2ValMat(hist2);
+		
+	}
+	
 
 	@FXML
 	private void cancueIdCard() {
@@ -721,9 +792,10 @@ public class FourierController {
 		Mat thresholdImg = new Mat();
 		Mat dilated_edges = new Mat();
 
-		Mat rectM = new Mat();
+	
 		this.grayimage.copyTo(m);
-		this.image.copyTo(rectM);
+		
+	
 
 		m.copyTo(filtered);
 		// 滤波，模糊处理，消除某些背景干扰信息
@@ -736,6 +808,9 @@ public class FourierController {
 		double maxgrayval = 40;// getthresh(m);
 		System.out.println("maxgrayval:" + maxgrayval);
 
+		
+		//Imgproc.equalizeHist(filtered, filtered);
+		
 		// int thresh_type = Imgproc.THRESH_BINARY_INV; //反转
 		int thresh_type = Imgproc.THRESH_OTSU;// 前后背景区分
 		// threshValue
@@ -743,6 +818,9 @@ public class FourierController {
 		double to = 255;
 		Imgproc.threshold(filtered, thresholdImg, maxgrayval * 3 / 4, to, thresh_type);
 
+		// //函数功能：直方图均衡化，该函数能归一化图像亮度和增强对比度
+	
+		
 		// Imgproc.blur(thresholdImg, thresholdImg, new Size(3, 3));
 
 		// dilate to fill gaps, erode to smooth edges
@@ -752,11 +830,33 @@ public class FourierController {
 		// Imgproc.threshold(thresholdImg, thresholdImg, maxgrayval * 2 / 3, to,
 		// thresh_type);
 
+		cacul2ValMat(thresholdImg);
+		 
+	}
+	
+	
+	/**
+	 * 对二值化后的身份证图片 ，定位行、字段等
+	 * @param thresholdImg
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	private void cacul2ValMat(Mat thresholdImg) {
 		savetoImg(thresholdImg, "thresholdImg");
 
+		Mat rectM = new Mat();
+		this.image.copyTo(rectM);
+		
 		Rect r = dorect(thresholdImg, rectM);
 
 		savetoImg(rectM, "rectM");
+		
+		if(r.height==0&&r.width==0)
+		{
+			r.height=thresholdImg.height();
+			r.width=thresholdImg.width();
+				
+		}
 
 		Mat fMat = new Mat(thresholdImg, r);
 
@@ -765,29 +865,64 @@ public class FourierController {
 		savetoImg(fMat, "gray_rect");
 		savetoImg(fRMat, "rectM_rect");
 
-		showImg(this.transformedImage, rectM);
+		showImg(this.transformedImage2, fMat);
 
 		Mat yhist = new Mat();
 		List<Rect> rects = cany(fMat, yhist);
 
-		showImg(this.transformedImage2, yhist);
+		showImg(this.transformedImage, yhist);
 
+		
 		Imgproc.cvtColor(fMat, fMat, Imgproc.COLOR_GRAY2BGR);
 		for (int i = 0; i < rects.size(); i++) {
 			// if(rects.get(i).height>30)
 			// {
+			
+			Rect yrect=rects.get(i);
 			System.out.println(i + ": x:" + rects.get(i).x + " y:" + rects.get(i).y + " height:" + rects.get(i).height);
-			Imgproc.rectangle(fMat, rects.get(i).tl(), rects.get(i).br(), new Scalar(0, 0, 255));
+			Imgproc.rectangle(fRMat, rects.get(i).tl(), rects.get(i).br(), new Scalar(255, 0, 255),6);
+			
+			
+			//Mat rowMat=new Mat(fMat,new Rect(yrect.x,yrect.y, yrect.width*5/8, yrect.height));
+			Mat rowMat=new Mat(fMat,new Rect(yrect.x,yrect.y, yrect.width*5/8, yrect.height));
+			if(i>=rects.size()-2)
+				rowMat=new Mat(fMat,new Rect(yrect.x,yrect.y, yrect.width, yrect.height));
+			
+			  Mat xhist =new Mat();
+			 List<Rect> xrects= canx(rowMat,xhist);
+			 
+			 if(i==2)
+			 showImg(this.antitransformedImage2, xhist);
+			// else
+			//	 showImgHalf(this.antitransformedImage2, xhist);
+			 
+			// System.out.println("-------------");
+			for (int j = 0; j < xrects.size(); j++) {
+				Rect xrect=xrects.get(j);
+				
+				//System.out.println(j + ": x:" + xrect.x + " y:" + xrect.y + " width:" + xrect.width);
+				
+				Imgproc.rectangle(fRMat, new Point(xrect.x, yrect.y),new Point(xrect.x+xrect.width, yrect.y+yrect.height), new Scalar(0,255, 0),3);
+			}
+			
+			
+			//System.out.println("===========================");
+			
+			
+			
+		
 			// }
 		}
+		
+		showImg(this.antitransformedImage, fRMat);
 
-		showImg(this.antitransformedImage, fMat);
+		
+		//  Mat xhist =new Mat();
+		//	 List<Rect> xrects= canx(fMat,xhist);
+			 
+		//showImg(this.antitransformedImage2, xhist);
 
-		/*
-		 * Mat xhist = canx(fMat);
-		 * 
-		 * showImg(this.antitransformedImage2, xhist);
-		 */
+		
 	}
 
 	/**
@@ -876,7 +1011,7 @@ public class FourierController {
 						start_val2 = num;
 
 						// 找到开始
-						if (start_val2 / start_val1 >= 2) {
+						if (start_val2 / start_val1 >= 2  && (start_val2>10 )) {
 							isstart = true;
 							
 						} else {
@@ -897,17 +1032,15 @@ public class FourierController {
 
 			} else {
 
-				if (num > 0) {
+				if (num >= 0) {
 					if (start_val1 == 0)
 						start_val1 = num;
 					else {
 						start_val2 = num;
 
-						
-						//TODO
 
 						// 找到结束
-						if (start_val1 / start_val2 < 3    ) {
+						if (start_val1 / start_val2 > 1.4  && (j-startj>15 ) && start_val2<5   ) {
 							isend = true;
 							start_val1 = 0;
 						} else {
@@ -932,20 +1065,7 @@ public class FourierController {
 					rects.add(r);
 				}
 
-				/*
-				 * start_val2 = num;
-				 * 
-				 * 
-				 * if (start_val2/max<minrate && start_val2/start_val1>2&& j - startj>10) {
-				 * 
-				 * isstart=false;
-				 * 
-				 * start_val1=0;
-				 * 
-				 * 
-				 * Rect r = rects.get(rects.size() - 1); r.height = j - startj;
-				 * rects.remove(rects.size() - 1); rects.add(r); } else { start_val1 = num; }
-				 */
+
 
 			}
 
@@ -963,7 +1083,7 @@ public class FourierController {
 	 * @author zj
 	 * @date 2018年8月7日
 	 */
-	private Mat canx(Mat input) {
+	private List<Rect> canx(Mat input,Mat output) {
 
 		int imgheight = input.height();
 		int imgwidth = input.width();
@@ -982,7 +1102,7 @@ public class FourierController {
 		for (int j = 0; j < imgwidth; j++) {
 			for (int i = 0; i < imgheight; i++) {
 
-				if (input.get(i, j)[0] == 255) {
+				if (input.get(i, j)[0] == 0) {
 
 					double num = hist.get(0, j)[0];
 					num++;
@@ -1002,7 +1122,7 @@ public class FourierController {
 		double[] v2 = new double[imgwidth * imgheight];
 
 		for (int j = 0; j < imgwidth * imgheight; j++) {
-			v2[j] = 255;
+			v2[j] =0;
 		}
 		hist2.put(0, 0, v2);
 		for (int j = 0; j < imgwidth; j++) {
@@ -1010,12 +1130,98 @@ public class FourierController {
 			double y = (hist.get(0, j)[0] / max) * imgheight;
 
 			// B component or gray image
-			Imgproc.line(hist2, new Point(j, imgheight), new Point(j, y), new Scalar(0, 0, 0), 2, 8, 0);
+			Imgproc.line(hist2, new Point(j, imgheight), new Point(j, y), new Scalar(255, 0, 0), 2, 8, 0);
 		}
 
 		// Imgproc.cvtColor(hist2, hist2, Imgproc.COLOR_GRAY2BGR);
+		hist2.copyTo(output);
+		
+		//rects
+		// 计算纵向区域
+				List<Rect> rects = new ArrayList<>();
+				boolean isstart = false;
 
-		return hist2;
+				double start_val1 = 0;
+				double start_val2 = 0;
+				int startj = 0;
+				double rate = 10;// 第二行超第一行的倍数
+				double minrate = 0.01;
+
+				int times = 0;
+				int maxtimes = 5;// 像素值突然增大为区域开始
+				boolean isend = false;
+				for (int j = 0; j < imgwidth; j++) {
+					double num = hist.get(0, j)[0];
+
+					if (!isstart) {
+						if (num > 0) {
+							if (start_val1 == 0)
+								start_val1 = num;
+							else {
+								start_val2 = num;
+
+								// 找到开始
+								if (start_val2 / start_val1 >= 1  && start_val2>5) {
+									isstart = true;
+									
+								} else {
+									// 重新开始计算
+									start_val1 = num;
+								}
+							}
+
+						}
+
+						if (isstart) {
+							startj = j;
+							Rect r = new Rect(j, 0, 0,imgheight);
+
+							rects.add(r);
+
+						}
+
+					} else {
+
+						if (num >= 0) {
+							if (start_val1 == 0)
+								start_val1 = num;
+							else {
+								start_val2 = num;
+
+
+								// 找到结束
+								if (start_val1 / start_val2 > 1.6 && (j-startj>15 ) && start_val2<10   ) {
+									isend = true;
+									start_val1 = 0;
+								} else {
+									// 重新开始计算
+									start_val1 = num;
+								}
+								
+								
+							}
+
+						}
+
+						if (isend) {
+
+							isstart = false;
+							isend=false;
+							start_val1 = 0;
+
+							Rect r = rects.get(rects.size() - 1);
+							r.width = j - startj;
+							rects.remove(rects.size() - 1);
+							rects.add(r);
+						}
+
+
+
+					}
+
+				}
+
+				return rects;
 
 	}
 
@@ -1028,6 +1234,17 @@ public class FourierController {
 		view.setFitHeight(350);
 
 	}
+	
+	private void showImgHalf(ImageView view, Mat m) {
+		// show the image
+		this.updateImageView(view, Utils.mat2Image(m));
+		// set a fixed width
+		view.setFitWidth(450/2);
+
+		view.setFitHeight(350/2);
+
+	}
+
 
 	/**
 	 * 区域识别

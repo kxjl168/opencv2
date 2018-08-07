@@ -131,6 +131,7 @@
 
 <Button alignment="center" text="身份证检测" onAction="#cancueIdCard" />
 
+<Button alignment="center" text="身份证颜色检测" onAction="#caculBack" />
 
 
 
