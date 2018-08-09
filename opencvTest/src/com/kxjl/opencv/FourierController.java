@@ -2,6 +2,8 @@ package com.kxjl.opencv;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +29,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
+import org.opencv.utils.Converters;
 import org.opencv.video.Video;
 import org.opencv.videoio.VideoCapture;
 
@@ -58,6 +61,12 @@ public class FourierController {
 	// images to show in the view
 	@FXML
 	private ImageView originalImage;
+
+	@FXML
+	private ImageView originalImage2;
+
+	@FXML
+	private ImageView originalImage3;
 	@FXML
 	private ImageView transformedImage;
 	@FXML
@@ -190,7 +199,9 @@ public class FourierController {
 		Core.split(hsvImg, hsvPlanes);
 		double threshValue = this.getHistAverage(hsvImg, hsvPlanes.get(0));
 
-		double threshValue2 = getthresh(frame);
+		Mat normal = new Mat();
+		Imgproc.cvtColor(frame, normal, Imgproc.COLOR_GRAY2BGR);
+		double threshValue2 = getAvGray(normal);
 		System.out.println("av threshValue:" + threshValue);
 		System.out.println("a2v threshValue:" + threshValue2);
 		/*
@@ -639,19 +650,20 @@ public class FourierController {
 	}
 
 	/**
-	 * 获取灰度图的1/3区域高度的平均灰度值
+	 * 获取灰度图的中间1/3区域宽度的平均灰度值
 	 * 
-	 * @param input 灰度图
+	 * @param input
+	 *            灰度图
 	 * @return
 	 * @author zj
 	 * @date 2018年8月7日
 	 */
-	private double getthresh(Mat input) {
+	private double getAvThirdWidthGray(Mat input) {
 		double v = 0;
 
 		Mat gray = new Mat();
-		//input.copyTo(gray);
-		 Imgproc.cvtColor(input, gray, Imgproc.COLOR_BGR2GRAY);
+		// input.copyTo(gray);
+		Imgproc.cvtColor(input, gray, Imgproc.COLOR_BGR2GRAY);
 
 		// //函数功能：直方图均衡化，该函数能归一化图像亮度和增强对比度
 		// Imgproc.equalizeHist(gray, gray);
@@ -659,8 +671,8 @@ public class FourierController {
 		int imgwidth = gray.width();
 		int imgheight = gray.height();
 		double total = 0;
-		for (int i = 0; i < imgwidth; i++) {
-			for (int j = imgheight / 3; j < imgheight * 2 / 3; j++) {
+		for (int i = imgwidth / 3; i < imgwidth * 2 / 3; i++) {
+			for (int j = 0; j < imgheight; j++) {
 				// int j=imgheight/2;
 				double[] vals = gray.get(j, i);
 				double light = vals[0];
@@ -675,9 +687,47 @@ public class FourierController {
 	}
 
 	/**
+	 * 获取输入bgr图片的 平均灰度值
+	 * 
+	 * @param input
+	 *            bgr图
+	 * @return
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	private double getAvGray(Mat input) {
+		double v = 0;
+
+		Mat gray = new Mat();
+		// input.copyTo(gray);
+		Imgproc.cvtColor(input, gray, Imgproc.COLOR_BGR2GRAY);
+
+		// //函数功能：直方图均衡化，该函数能归一化图像亮度和增强对比度
+		// Imgproc.equalizeHist(gray, gray);
+
+		int imgwidth = gray.width();
+		int imgheight = gray.height();
+		double total = 0;
+		for (int i = 0; i < imgwidth; i++) {
+			for (int j = 0; j < imgheight; j++) {
+				// int j=imgheight/2;
+				double[] vals = gray.get(j, i);
+				double light = vals[0];
+				total += light;
+
+			}
+
+		}
+		v = total / (imgwidth * imgheight);
+		System.out.println("v:" + v);
+		return v;
+	}
+
+	/**
 	 * 获取灰度图的1/3区域高度的最大灰度值
 	 * 
-	 * @param input 灰度图
+	 * @param input
+	 *            灰度图
 	 * @return
 	 * @author zj
 	 * @date 2018年8月7日
@@ -687,7 +737,7 @@ public class FourierController {
 
 		Mat gray = new Mat();
 		input.copyTo(gray);
-		// Imgproc.cvtColor(input, gray, Imgproc.COLOR_BGR2GRAY);
+		Imgproc.cvtColor(input, gray, Imgproc.COLOR_BGR2GRAY);
 
 		// //函数功能：直方图均衡化，该函数能归一化图像亮度和增强对比度
 		// Imgproc.equalizeHist(gray, gray);
@@ -695,8 +745,8 @@ public class FourierController {
 		int imgwidth = gray.width();
 		int imgheight = gray.height();
 		double max = 0;
-		for (int i = 0; i < imgwidth; i++) {
-			for (int j = imgheight / 3; j < imgheight * 2 / 3; j++) {
+		for (int i = imgwidth / 3; i < imgwidth * 2 / 3; i++) {
+			for (int j = 0; j < imgheight; j++) {
 				// int j=imgheight/2;
 				double[] vals = gray.get(j, i);
 				double light = vals[0];
@@ -712,26 +762,34 @@ public class FourierController {
 	}
 
 	/**
-	 * 提取黑色字段
+	 * bgr 适合尺寸 原始图片 身份证识别
 	 * 
+	 * @param input
+	 * @return
 	 * @author zj
-	 * @date 2018年8月7日
+	 * @date 2018年8月9日
 	 */
-	@FXML
-	private void caculBack() {
+	private Mat twoValueIdCard(Mat input) {
+		Mat rectM = new Mat();
 
 		Mat m = new Mat();
 		Mat filtered = new Mat();
-		Mat thresholdImg = new Mat();
-		Mat dilated_edges = new Mat();
+		// this.image.copyTo(rectM);
+		input.copyTo(rectM);
 
-		Mat rectM = new Mat();
-		this.grayimage.copyTo(m);
-		this.image.copyTo(rectM);
-
+		Imgproc.cvtColor(rectM, m, Imgproc.COLOR_BGR2GRAY);
 		m.copyTo(filtered);
 		// 滤波，模糊处理，消除某些背景干扰信息
-		Imgproc.blur(m, filtered, new Size(1, 1));
+		Imgproc.blur(m, filtered, new Size(3, 3));
+
+		savetoImg(filtered, "1");
+
+		Mat structElement1 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(6, 6));
+		// 腐蚀操作，消除某些背景干扰信息
+		Imgproc.erode(filtered, filtered, structElement1, new Point(-1, -1), 1);// 1, 1);
+		savetoImg(filtered, "2");
+		Imgproc.dilate(filtered, filtered, structElement1, new Point(-1, -1), 1);
+		savetoImg(filtered, "3");
 
 		int imgheight = rectM.height();
 		int imgwidth = rectM.width();
@@ -746,21 +804,57 @@ public class FourierController {
 		}
 		hist2.put(0, 0, v2);
 
-		
-		double avlihght=getthresh(rectM);
-		System.out.println("avlight:"+avlihght);
-		
-		double param=5;
-		if(avlihght>175)
-			param= avlihght-130;
-				
-		
+		double avlihghtThird = getAvThirdWidthGray(rectM);
+		double avlihght = getAvGray(rectM);
+		double maxlihght = getMaxthresh(rectM);
+
+		double val = maxlihght - avlihghtThird;// 差值
+		System.out.println("avlight:" + avlihght + " maxgray:" + maxlihght + "  val:" + val);
+
+		/*
+		 * double param=5; if(avlihght>175) param= avlihght-130;
+		 * 
+		 */
+
+		double param = (255 - maxlihght) * 2;
+
+		// 确定过滤的灰色阈值
+		if (Math.abs(avlihght - avlihghtThird) < 20) {
+
+			// 中间区域与全图平均灰度差别不大，无高亮/图片颜色分布均衡
+
+			if (val < 35) // 对比度比较低，整体偏亮
+			{
+				if (avlihghtThird < 180) // 平均灰度第，颜色清晰
+					param = 135; // 过滤偏黑灰色.
+				else
+					param = 149; // //平均灰度第，颜色不太清晰
+
+			} else if (val >= 35 && val < 61) // 正常图片，颜色分布均衡
+			{
+				param = 110; // 过滤偏黑灰色.
+
+				if (maxlihght < 200)
+					param = 85; // 过滤偏黑灰色.
+
+			} else if (val >= 61 && val < 91) // 对比度比较高，色彩区分度高
+				param = 60; // 过滤偏黑色.
+			else if (val >= 91) // 对比度超高，图片有亮度不均衡或者部分区域高亮
+			{
+				param = 60; // 过滤偏黑色.
+			}
+		}
+
 		double max = imgheight;// 0;
 		for (int j = 0; j < imgwidth; j++) {
 			for (int i = 0; i < imgheight; i++) {
 
 				try {
-					if (rectM.get(i, j)[0] <= 100+param && rectM.get(i, j)[1] <= 100+param && rectM.get(i, j)[2] <= 100+param) {
+					// if (rectM.get(i, j)[0] <= 100+param && rectM.get(i, j)[1] <= 100+param &&
+					// rectM.get(i, j)[2] <= 100+param) {
+
+					// 对彩色图片过滤黑色阈值
+					if (rectM.get(i, j)[0] <= param && rectM.get(i, j)[1] <= param && rectM.get(i, j)[2] <= param) {
 
 						hist2.put(i, j, 0);
 					} else {
@@ -772,9 +866,42 @@ public class FourierController {
 
 			}
 		}
+		savetoImg(hist2, "4");
 
-		showImg(this.transformedImage2, hist2);
+		return hist2;
+	}
 
+	/**
+	 * 直接原始全图 身份证 提取黑色字段识别
+	 * 
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	@FXML
+	private void caculBack() {
+
+		Mat m = new Mat();
+		Mat filtered = new Mat();
+		Mat thresholdImg = new Mat();
+		Mat dilated_edges = new Mat();
+
+		this.image.copyTo(m);
+
+		doCardReg(m);
+	}
+
+	/**
+	 * 对输入身份证身份证识别
+	 * 
+	 * @param input
+	 * @author zj
+	 * @date 2018年8月9日
+	 */
+	private void doCardReg(Mat input) {
+		Mat m = new Mat();
+		input.copyTo(m);
+
+		Mat hist2 = twoValueIdCard(m);
 		// 滤波，模糊处理，消除某些背景干扰信息
 		Imgproc.blur(hist2, hist2, new Size(1, 1));
 
@@ -782,12 +909,17 @@ public class FourierController {
 		Imgproc.erode(hist2, hist2, new Mat(), new Point(-1, -1), 1);// 1, 1);
 		Imgproc.dilate(hist2, hist2, new Mat(), new Point(-1, -1), 1);
 
-		cacul2ValMat(hist2);
-
+		cacul2ValMat(m, hist2);
 	}
 
+	/**
+	 * 二值化选择边框，计算身份证
+	 * 
+	 * @author zj
+	 * @date 2018年8月9日
+	 */
 	@FXML
-	private void cancueIdCard() {
+	private void cancueIdCardRage() {
 
 		Mat m = new Mat();
 		Mat filtered = new Mat();
@@ -816,50 +948,75 @@ public class FourierController {
 		double to = 255;
 		Imgproc.threshold(filtered, thresholdImg, maxgrayval * 3 / 4, to, thresh_type);
 
-		// //函数功能：直方图均衡化，该函数能归一化图像亮度和增强对比度
+		Mat rectM = new Mat();
+		this.image.copyTo(rectM);
+		Mat rectM2 = new Mat();
+		this.image.copyTo(rectM2);
 
-		// Imgproc.blur(thresholdImg, thresholdImg, new Size(3, 3));
+		// 变换参数
+		Mat transMat = new Mat();
 
-		// dilate to fill gaps, erode to smooth edges
-		// Imgproc.dilate(thresholdImg, thresholdImg, new Mat(), new Point(-1, -1), 3);
-		// Imgproc.erode(thresholdImg, thresholdImg, new Mat(), new Point(-1, -1), 3);
+		// 截取证件区域数据并进行透视变换为 垂直视角
+		Mat realRect = new Mat();
+		// Imgproc. warpPerspective(new Mat(rectM2, r),realRect,transMat,new
+		// Size(r.width,r.height), Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
 
-		// Imgproc.threshold(thresholdImg, thresholdImg, maxgrayval * 2 / 3, to,
-		// thresh_type);
+		Rect r = doContours(thresholdImg, rectM, transMat);
+		if (r.width == 0 && r.height == 0) {
+			// 轮廓计算失败
+			r.width = filtered.width();
 
-		cacul2ValMat(thresholdImg);
+			r.height = filtered.height();
+
+			rectM2.copyTo(realRect);
+		} else {
+			// 轮廓ok,变换原图
+			
+			
+			
+			Imgproc.warpPerspective(rectM2, realRect, transMat, rectM2.size(), Imgproc.INTER_LINEAR); // +
+																										// Imgproc.WARP_INVERSE_MAP
+																										// 
+		}
+
+		showImg(originalImage3, realRect);
+
+		Imgproc.cvtColor(thresholdImg, thresholdImg, Imgproc.COLOR_GRAY2BGR);
+		Imgproc.rectangle(thresholdImg, r.tl(), r.br(), new Scalar(0, 0, 255), 2);
+
+		showImg(originalImage2, thresholdImg);
+
+		doCardReg(new Mat(realRect, r));
 
 	}
 
 	/**
-	 * 对二值化后的身份证图片 ，定位行、字段等
+	 * 对二值化后的身份证图片 ，定位行、字段等 区域原图,二值化的图
 	 * 
 	 * @param thresholdImg
 	 * @author zj
 	 * @date 2018年8月7日
 	 */
-	private void cacul2ValMat(Mat thresholdImg) {
-		savetoImg(thresholdImg, "thresholdImg");
+	private void cacul2ValMat(Mat rectM, Mat thresholdImg) {
+		// savetoImg(thresholdImg, "thresholdImg");
 
-		Mat rectM = new Mat();
-		this.image.copyTo(rectM);
+		// Rect r = doContours(thresholdImg, rectM);
 
-		Rect r = dorect(thresholdImg, rectM);
+		// savetoImg(rectM, "rectM");
 
-		savetoImg(rectM, "rectM");
+		/*
+		 * if (r.height == 0 && r.width == 0) { r.height = thresholdImg.height();
+		 * r.width = thresholdImg.width();
+		 * 
+		 * }
+		 */
 
-		if (r.height == 0 && r.width == 0) {
-			r.height = thresholdImg.height();
-			r.width = thresholdImg.width();
+		Mat fMat = new Mat(thresholdImg, new Rect(0, 0, thresholdImg.width(), thresholdImg.height()));
 
-		}
+		Mat fRMat = new Mat(rectM, new Rect(0, 0, thresholdImg.width(), thresholdImg.height()));
 
-		Mat fMat = new Mat(thresholdImg, r);
-
-		Mat fRMat = new Mat(rectM, r);
-
-		savetoImg(fMat, "gray_rect");
-		savetoImg(fRMat, "rectM_rect");
+		// savetoImg(fMat, "gray_rect");
+		// savetoImg(fRMat, "rectM_rect");
 
 		showImg(this.transformedImage2, fMat);
 
@@ -875,7 +1032,7 @@ public class FourierController {
 
 			Rect yrect = rects.get(i);
 			System.out.println(i + ": x:" + rects.get(i).x + " y:" + rects.get(i).y + " height:" + rects.get(i).height);
-			Imgproc.rectangle(fRMat, rects.get(i).tl(), rects.get(i).br(), new Scalar(255, 0, 255), 4);
+			Imgproc.rectangle(fRMat, rects.get(i).tl(), rects.get(i).br(), new Scalar(255, 0, 255), 2);
 
 			// Mat rowMat=new Mat(fMat,new Rect(yrect.x,yrect.y, yrect.width*5/8,
 			// yrect.height));
@@ -886,7 +1043,7 @@ public class FourierController {
 			Mat xhist = new Mat();
 			List<Rect> xrects = canx(rowMat, xhist);
 
-			if (i == 2)
+			if (i == rects.size() - 1)
 				showImg(this.antitransformedImage2, xhist);
 			// else
 			// showImgHalf(this.antitransformedImage2, xhist);
@@ -902,26 +1059,25 @@ public class FourierController {
 				// xrect.width);
 
 				double x = xrect.x - paramsize < 0 ? 0 : xrect.x - paramsize;
-				double y = yrect.y  - paramsize < 0 ? 0 : yrect.y - paramsize;
+				double y = yrect.y - paramsize < 0 ? 0 : yrect.y - paramsize;
 
 				// 每一行的身份证字段区域
-				if(i==1||i==2)
-				Imgproc.rectangle(fRMat, new Point(x, y),
-						new Point(xrect.x + xrect.width + paramsize, yrect.y + yrect.height + paramsize),
-						new Scalar(0, 255, 0), 2);
+				if (i == 1 || i == 2)
+					Imgproc.rectangle(fRMat, new Point(x, y),
+							new Point(xrect.x + xrect.width + paramsize, yrect.y + yrect.height + paramsize),
+							new Scalar(0, 255, 0), 2);
 			}
 
-			if(xrects.size()>0)
-			{
-			double x =xrects.get(0).x - paramsize < 0 ? 0 : xrects.get(0).x - paramsize;
-			double y = yrect.y - paramsize< 0 ? 0 : yrect.y - paramsize;
+			if (xrects.size() > 0) {
+				double x = xrects.get(0).x - paramsize < 0 ? 0 : xrects.get(0).x - paramsize;
+				double y = yrect.y - paramsize < 0 ? 0 : yrect.y - paramsize;
 
-			// 根据不同行，处理不同的区域合并问题 其他行合并显示
-			if (i != 1&&i!=2)
-				Imgproc.rectangle(fRMat, new Point(x, y),
-						new Point(xrects.get(xrects.size() - 1).x + xrects.get(xrects.size() - 1).width  + paramsize,
-								yrect.y + yrect.height + paramsize),
-						new Scalar(255, 255, 0), 2);
+				// 根据不同行，处理不同的区域合并问题 其他行合并显示
+				if (i != 1 && i != 2)
+					Imgproc.rectangle(fRMat, new Point(x, y),
+							new Point(xrects.get(xrects.size() - 1).x + xrects.get(xrects.size() - 1).width + paramsize,
+									yrect.y + yrect.height + paramsize),
+							new Scalar(255, 255, 0), 2);
 
 			}
 			// System.out.println("===========================");
@@ -1017,8 +1173,8 @@ public class FourierController {
 			double num = hist.get(0, j)[0];
 
 			if (!isstart) {
-				//顶部和底部的排除
-				if (num > 0 && j>20 && j<imgheight-20) {
+				// 顶部和底部的排除
+				if (num > 0 && j > 20 && j < imgheight - 20) {
 					if (start_val1 == 0)
 						start_val1 = num;
 					else {
@@ -1164,7 +1320,8 @@ public class FourierController {
 			double num = hist.get(0, j)[0];
 
 			if (!isstart) {
-				if (num > 0) {
+				// 边框上的不检测
+				if (num > 0 && j >= 20 && j <= imgwidth - 30) {
 					if (start_val1 == 0)
 						start_val1 = num;
 					else {
@@ -1199,7 +1356,7 @@ public class FourierController {
 						start_val2 = num;
 
 						// 找到结束
-						if (start_val1 / start_val2 > 1.6 && (j - startj > 15) && start_val2 < 10) {
+						if (start_val1 / start_val2 > 1.5 && (j - startj > 2) && start_val2 < 10) {
 							isend = true;
 							start_val1 = 0;
 						} else {
@@ -1252,35 +1409,38 @@ public class FourierController {
 	}
 
 	/**
-	 * 区域识别
+	 * candy二值化选择边框，计算身份证 区域识别
 	 * 
 	 * @author zj
 	 * @date 2018年8月6日
 	 */
 	@FXML
-	private void canculRange() {
+	private void canculRangeByCandy() {
 
 		Mat m = new Mat();
 		Mat filtered = new Mat();
 		Mat edges = new Mat();
 		Mat dilated_edges = new Mat();
-		this.grayimage.copyTo(m);
+		this.image.copyTo(m);
 
 		// 滤波，模糊处理，消除某些背景干扰信息
 		Imgproc.blur(m, filtered, new Size(3, 3));
 
-		savetoImg(filtered, "blur_33");
+		// savetoImg(filtered, "blur_33");
 
 		// 腐蚀操作，消除某些背景干扰信息
 		Imgproc.erode(filtered, filtered, new Mat(), new Point(-1, -1), 3);// 1, 1);
 
-		savetoImg(filtered, "blur_33_erode");
+		// savetoImg(filtered, "blur_33_erode");
 
 		// 获取直方图均衡化后的灰度像素均值.
-		double mean = getthresh(m);
+		double mean = getAvGray(m);
 
 		// double thresh =mean;
 		double thresh = this.threshold.getValue();// 25D;
+
+		String valuesToPrint = "threshValue: " + this.threshold.getValue();
+		Utils.onFXThread(this.hsvValuesProp, valuesToPrint);
 
 		// this.grayimage.copyTo(filtered);
 
@@ -1293,7 +1453,7 @@ public class FourierController {
 		double threshmin = thresh;
 		double threshmax = threshmin * 3;
 
-		System.out.println("mean:" + mean + "/threshmin:" + threshmin + "/threshmax:" + threshmax);
+		System.out.println("*****mean:" + mean + "/threshmin:" + threshmin + "/threshmax:" + threshmax);
 
 		// 边缘检测
 		Imgproc.Canny(filtered, edges, threshmin, threshmax);
@@ -1301,25 +1461,61 @@ public class FourierController {
 		savetoImg(edges, "blur_33_erode_edges");
 
 		// show the image
-		this.updateImageView(antitransformedImage, Utils.mat2Image(edges));
-		// set a fixed width
-		this.antitransformedImage.setFitWidth(450);
+		// showImg(antitransformedImage, edges);
 
 		// 膨胀操作，尽量使边缘闭合
 		Imgproc.dilate(edges, dilated_edges, new Mat(), new Point(-1, -1), 3);// , 1, 1);
 
-		savetoImg(dilated_edges, "blur_33_erode_edges_dilated_edges");
+		Mat transMat = new Mat();
+		dilated_edges.copyTo(transMat);
+
+		Rect r = doContours(dilated_edges, dilated_edges, transMat);
+
+		Mat rectM2 = new Mat();
+		this.image.copyTo(rectM2);
+
+		Mat realRect = new Mat();
+		if (r.width == 0 && r.height == 0) {
+			// 轮廓计算失败
+			r.width = dilated_edges.width();
+
+			r.height = dilated_edges.height();
+
+			rectM2.copyTo(realRect);
+		} else {
+			// 轮廓ok,变换原图
+			Imgproc.warpPerspective(rectM2, realRect, transMat, rectM2.size(),
+					Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
+		}
+
+		showImg(originalImage3, realRect);
+
+		Imgproc.cvtColor(dilated_edges, dilated_edges, Imgproc.COLOR_GRAY2BGR);
+		Mat stepM = new Mat();
+		dilated_edges.copyTo(stepM);
+
+		Imgproc.rectangle(dilated_edges, r.tl(), r.br(), new Scalar(0, 0, 255), 4);
+
+		showImg(originalImage2, dilated_edges);
+
+		doCardReg(new Mat(realRect, r));
 
 	}
 
 	/**
-	 * 绘制边框矩形，
+	 * 绘制 -轮廓，返回轮廓矩形 , 并且将原图矩形变换较证
 	 * 
 	 * @param dilated_edges
+	 *            输入
+	 * @param outContouMat
+	 *            画上轮廓的输出
+	 * @param transMat
+	 *            透视变换mat
+	 * @return
 	 * @author zj
-	 * @date 2018年8月7日
+	 * @date 2018年8月9日
 	 */
-	private Rect dorect(Mat dilated_edges, Mat o) {
+	private Rect doContours(Mat dilated_edges, Mat outContouMat, Mat transMat) {
 
 		// Mat o = new Mat();
 		// this.image.copyTo(o);
@@ -1400,10 +1596,49 @@ public class FourierController {
 						// Imgproc.rectangle(m, rect.tl(), rect.br(), new Scalar(20, 20, 20), -1, 4, 0);
 
 						// 绘制边界轮廓
-						Imgproc.drawContours(o, contours, i, new Scalar(255, 0, 0, .8), 6);
+						Imgproc.drawContours(outContouMat, contours, i, new Scalar(255, 255, 0), 3);
+						
+						
+					
 
-						// Highgui.imwrite("detected_layers"+i+".png", originalImage);
-						// }
+						MatOfPoint2f rectMat_dest = new MatOfPoint2f(
+								new Point[] {  new Point(rect.x, rect.y),new Point(rect.x + rect.width, rect.y),
+										new Point(rect.x + rect.width, rect.y + rect.height), 
+										new Point(rect.x, rect.y + rect.height),		
+								});
+
+						// 确定 approxCurve 点的顺序
+						List<Point> pts = new ArrayList<>();
+						Point pt1 = new Point(approxCurve.get(0, 0));
+						Point pt2 = new Point(approxCurve.get(1, 0));
+						Point pt3 = new Point(approxCurve.get(2, 0));
+						Point pt4 = new Point(approxCurve.get(3, 0));
+						pts.add(pt1);
+						pts.add(pt2);
+						pts.add(pt3);
+						pts.add(pt4);
+						Point[] npts= sortRectPoints(pts);
+
+						for (Point point : npts) {
+							// 绘制四个订点
+							Imgproc.drawMarker(outContouMat, point, new Scalar(255, 0, 0, 18), Imgproc.MARKER_DIAMOND, 40, 5, 8);
+							
+							
+							
+						}
+					
+						
+						MatOfPoint2f rectMat_src = new MatOfPoint2f(
+								new Point[] { npts[0],npts[1],npts[2],npts[3] });
+
+						// 矩形变换 获取 规则->不规则
+						Mat tp = Imgproc.getPerspectiveTransform(rectMat_dest,rectMat_src);
+						tp.copyTo(transMat);
+
+						// 使用变换
+						// Imgproc. warpPerspective(dilated_edges,outtransMat,tp,dilated_edges.size(),
+						// Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
+
 					}
 				}
 			}
@@ -1412,6 +1647,51 @@ public class FourierController {
 		// savetoImg(dilated_edges, "contour");
 
 		return rect;
+
+	}
+
+	/**
+	 * 凸四边形顶点排序，左上角开始顺时针排序
+	 * 
+	 * @param pts
+	 * @return
+	 * @author zj
+	 * @date 2018年8月9日
+	 */
+	private Point[] sortRectPoints(List<Point> pts) {
+		//List<Point> rst = new ArrayList();
+		
+		if(pts.size()!=4)
+			return null;
+		
+		Point[] apts=new Point[4];
+
+		double xtotal=0;
+		double ytotal=0;
+		double xav=0;
+		double yav=0;
+		for (Point point : pts) {
+			xtotal+=point.x;
+			ytotal+=point.y;
+		}
+		//中心点
+		xav=xtotal/pts.size();
+		yav=ytotal/pts.size();
+		
+		for (Point point : pts) {
+			
+			if(point.x<xav &&point.y<yav)
+				apts[0]=point;
+			else if(point.x>xav &&point.y<yav)
+				apts[1]=point;
+			else if(point.x>xav &&point.y>yav)
+				apts[2]=point;
+			else if(point.x<xav &&point.y>yav)
+				apts[3]=point;
+		}
+		
+		
+		return apts;
 
 	}
 
@@ -1456,7 +1736,8 @@ public class FourierController {
 	/**
 	 * Apply Canny
 	 * 
-	 * @param frame the current frame
+	 * @param frame
+	 *            the current frame
 	 * @return an image elaborated with Canny
 	 */
 	private Mat doCanny(Mat frame) {
@@ -1701,7 +1982,8 @@ public class FourierController {
 	/**
 	 * Optimize the image dimensions
 	 * 
-	 * @param image the {@link Mat} to optimize
+	 * @param image
+	 *            the {@link Mat} to optimize
 	 * @return the image whose dimensions have been optimized
 	 */
 	private Mat optimizeImageDim(Mat image) {
@@ -1722,7 +2004,8 @@ public class FourierController {
 	 * Optimize the magnitude of the complex image obtained from the DFT, to improve
 	 * its visualization
 	 * 
-	 * @param complexImage the complex image obtained from the DFT
+	 * @param complexImage
+	 *            the complex image obtained from the DFT
 	 * @return the optimized image
 	 */
 	private Mat createOptimizedMagnitude(Mat complexImage) {
@@ -1755,7 +2038,8 @@ public class FourierController {
 	 * Reorder the 4 quadrants of the image representing the magnitude, after the
 	 * DFT
 	 * 
-	 * @param image the {@link Mat} object whose quadrants are to reorder
+	 * @param image
+	 *            the {@link Mat} object whose quadrants are to reorder
 	 */
 	private void shiftDFT(Mat image) {
 		image = image.submat(new Rect(0, 0, image.cols() & -2, image.rows() & -2));
@@ -1780,7 +2064,8 @@ public class FourierController {
 	/**
 	 * Set the current stage (needed for the FileChooser modal window)
 	 * 
-	 * @param stage the stage
+	 * @param stage
+	 *            the stage
 	 */
 	public void setStage(Stage stage) {
 		this.stage = stage;
@@ -1789,8 +2074,10 @@ public class FourierController {
 	/**
 	 * Update the {@link ImageView} in the JavaFX main thread
 	 * 
-	 * @param view  the {@link ImageView} to update
-	 * @param image the {@link Image} to show
+	 * @param view
+	 *            the {@link ImageView} to update
+	 * @param image
+	 *            the {@link Image} to show
 	 */
 	private void updateImageView(ImageView view, Image image) {
 		Utils.onFXThread(view.imageProperty(), image);

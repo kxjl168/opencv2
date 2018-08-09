@@ -71,6 +71,8 @@
 							<Insets right="10" left="10" />
 						</padding>
 						<ImageView fx:id="originalImage" />
+						<ImageView fx:id="originalImage2" />
+						<ImageView fx:id="originalImage3" />
 					</VBox>
 				</left>
 
@@ -127,9 +129,9 @@
 
 
 <Button alignment="center" text="二值化去背景" onAction="#doBackgroundRemoval" />
-<Button alignment="center" text="轮廓检测" onAction="#canculRange" />
+<Button alignment="center" text="Candy轮廓检测" onAction="#canculRangeByCandy" />
 
-<Button alignment="center" text="身份证检测" onAction="#cancueIdCard" />
+<Button alignment="center" text="二值化轮廓检测" onAction="#cancueIdCardRage" />
 
 <Button alignment="center" text="身份证颜色检测" onAction="#caculBack" />
 
