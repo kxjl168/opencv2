@@ -2,6 +2,7 @@ package com.kxjl.opencv;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import org.opencv.core.Size;
 import org.opencv.dnn.Dnn;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
@@ -101,6 +103,13 @@ public class FourierController {
 	@FXML
 	private Slider valueStop;
 
+	
+	
+	@FXML
+	private Slider valueDuibi;
+	@FXML
+	private Slider valuelight;
+	
 	// the main stage
 	private Stage stage;
 	// the JavaFX file chooser
@@ -414,15 +423,99 @@ public class FourierController {
 	@FXML
 	protected void t2ruihua() {
 		Mat nmat = new Mat();
-		this.image.copyTo(nmat);
+		this.grayimage.copyTo(nmat);
 
 		Mat t = ruihua(nmat);
 
+		
+		savetoImg(t,"ruihua");
+		
+		
 		// show the image
 		this.updateImageView(antitransformedImage, Utils.mat2Image(t));
 
 		// set a fixed width
 		this.antitransformedImage.setFitWidth(450);
+	}
+	
+	
+	/**
+	 * 图像对比度调整
+	 * 
+	 * @author zj
+	 * @date 2018年8月15日
+	 */
+	@FXML
+	private void t2duibidui() {
+		
+		
+		Mat n=new Mat();
+		this.image.copyTo(n);
+		
+	//	Imgproc.cvtColor(n,n, Imgproc.COLOR_BGR2RGB);
+		List<Mat> lab = new ArrayList<Mat>();
+		Core.split(n, lab);
+
+
+	/*	Mat gray = new Mat();
+		Imgproc.cvtColor(image, gray, Imgproc.COLOR_RGB2GRAY);
+		Core.divide(gray, new Scalar(255.0), gray);*/
+		
+	
+		int imgwidth=image.width();
+		int imgheight=image.height();
+		
+		// dehaze
+		List<Mat> bgr = new ArrayList<>();
+		Core.split(image, bgr);
+		Mat bChannel =bgr.get(0).zeros(image.size(), bgr.get(0).type());
+		//Core.normalize(bChannel, bChannel, 0, 255, Core.NORM_MINMAX);
+		Mat gChannel =bgr.get(1).zeros(image.size(), bgr.get(0).type());
+		//Core.normalize(gChannel, gChannel, 0, 255, Core.NORM_MINMAX);
+		Mat rChannel = bgr.get(2);
+		//Core.normalize(rChannel, rChannel, 0, 255, Core.NORM_MINMAX);
+		Mat dehazedImg = new Mat();
+		Core.merge(new ArrayList<>(Arrays.asList(bChannel, gChannel, rChannel)), dehazedImg);
+		
+		//savetoImg(sm, "sm");
+		
+		Mat dst=Mat.zeros(image.size(),image.type());
+		
+		
+		System.out.println("valueDuibi:"+valueDuibi.getValue());
+		System.out.println("valuelight:"+valuelight.getValue());
+		
+		for (int i = 0; i <imgwidth; i++) {
+		
+				for (int j = 0; j < imgheight; j++) {
+					
+				
+					double bdst= bgr.get(0).get(j,i)[0]*valueDuibi.getValue() +valuelight.getValue();
+					double gdst= bgr.get(1).get(j,i)[0]*valueDuibi.getValue() +valuelight.getValue();
+					double rdst= bgr.get(2).get(j,i)[0]*valueDuibi.getValue() +valuelight.getValue();
+					double[] val=new double[] {bdst,gdst,rdst};
+					dst.put(j,i, val);
+				}
+		}
+		
+		Core.normalize(dst, dst, 0, 255, Core.NORM_MINMAX);
+		
+		savetoImg(dst, "duibi");
+		
+		
+		showImg(originalImage2, dehazedImg);
+		
+		showImg(transformedImage,dst);
+		
+		
+		Mat eqMat=new Mat();
+		Imgproc.equalizeHist(bgr.get(0),eqMat);
+		//dst.convertTo(dst, dst.type(), valueDuibi.getValue(), valuelight.getValue());
+		showImg(transformedImage2,eqMat);
+		
+		
+		
+		
 	}
 
 	@FXML
@@ -606,6 +699,10 @@ public class FourierController {
 		// [0, -1, 0]});
 		Mat dstImage = new Mat();
 		Imgproc.filter2D(input, dstImage, input.depth(), kernel);
+		
+		
+		
+		
 		return dstImage;
 	}
 
@@ -777,7 +874,16 @@ public class FourierController {
 		// this.image.copyTo(rectM);
 		input.copyTo(rectM);
 
-		Imgproc.cvtColor(rectM, m, Imgproc.COLOR_BGR2GRAY);
+		
+		
+		//普通灰度转换
+		//Imgproc.cvtColor(rectM, m, Imgproc.COLOR_BGR2GRAY);
+		
+		List<Mat> planes=new ArrayList<>();
+		Core.split(rectM, planes);
+		planes.get(2).copyTo(m);
+		
+		
 		m.copyTo(filtered);
 		// 滤波，模糊处理，消除某些背景干扰信息
 		Imgproc.blur(m, filtered, new Size(3, 3));
@@ -1778,7 +1884,7 @@ public class FourierController {
 
 			// this.image = Imgcodecs.imread(file.getAbsolutePath(),
 			// Imgcodecs.IMREAD_COLOR);
-			this.image = Imgcodecs.imread(file.getAbsolutePath());// , Imgcodecs.IMREAD_COLOR);
+			this.image = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
 			this.grayimage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
 
 			// System.out.println("normal img:"+this.image.get(0, 0).length);
