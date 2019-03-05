@@ -44,12 +44,14 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.TesseractException;
 
 /**
  * The controller associated to the only view of our application. The
@@ -134,6 +136,9 @@ public class FourierController {
 
 	@FXML
 	private Slider threshold;
+
+	@FXML
+	private TextArea txtinfo;
 
 	/**
 	 * Init the needed variables
@@ -611,9 +616,9 @@ public class FourierController {
 		Mat m = new Mat();
 		this.image.copyTo(m);
 
-		String msg= ocr(m);
+		String msg = ocr(m);
 		System.out.println(msg);
-		
+
 		String path = FourierController.class.getResource("/").getPath();
 		File f1 = new File(path + "\\out\\ori\\");
 		File f = new File(path + "\\out\\ids\\");
@@ -622,23 +627,20 @@ public class FourierController {
 
 		if (!f1.exists())
 			f1.mkdirs();
-	
 
-		/* Scalar lower1 = new Scalar(0,150,100);
-		    Scalar upper1 = new Scalar(20,255,255);
-		    Scalar lower2 = new Scalar(140,100,100);
-		    Scalar upper2 = new Scalar(179,255,255);
-		    Core.inRange(m,lower1,upper1,m);
-		    Core.inRange(m,lower2,upper2,m);
-		    Core.addWeighted(m,1.0, m,1.0, 0.0, m);
-		    
-		    showImg(transformedImage3, m);
-		  */  
-		
-		//Imgproc.pyrUp(m, m);
-		//Imgproc.pyrUp(m, m);
+		/*
+		 * Scalar lower1 = new Scalar(0,150,100); Scalar upper1 = new
+		 * Scalar(20,255,255); Scalar lower2 = new Scalar(140,100,100); Scalar upper2 =
+		 * new Scalar(179,255,255); Core.inRange(m,lower1,upper1,m);
+		 * Core.inRange(m,lower2,upper2,m); Core.addWeighted(m,1.0, m,1.0, 0.0, m);
+		 * 
+		 * showImg(transformedImage3, m);
+		 */
+
+		// Imgproc.pyrUp(m, m);
+		// Imgproc.pyrUp(m, m);
 		Imgproc.pyrUp(m, m);
-		
+
 		Mat structElement1 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3), new Point(-1, -1));
 		/*
 		 * Mat structElement2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new
@@ -647,22 +649,20 @@ public class FourierController {
 		Imgproc.erode(m, m, structElement1, new Point(-1, -1), 3);// 1, 1);
 
 		Imgproc.dilate(m, m, structElement1, new Point(-1, -1), 3);
-		Imgproc.pyrDown(m,m);
-	//	Imgcodecs.imwrite(f.getAbsolutePath() + "\\" + name + "_b.png", m);
+		Imgproc.pyrDown(m, m);
+		// Imgcodecs.imwrite(f.getAbsolutePath() + "\\" + name + "_b.png", m);
 		m = ruihua(m);
 		Imgproc.blur(m, m, new Size(3, 3));
 		showImg(antitransformedImage2, m);
-		
-		//18-103, 82-161
-		m = getSimpleImgForJashiz(m, 0, 0);
 
+		// 18-103, 82-161
+		m = getSimpleImgForJashiz(m, 0, 0);
 
 		Imgproc.pyrDown(m, m);
 		showImg(antitransformedImage3, m);
 
+		savetoImg(m, "test");
 
-		savetoImg(m,"test");
-		
 		m = ruihua(m);
 
 		// RuihuaAndsavetoImg(in,"test");
@@ -1231,6 +1231,402 @@ public class FourierController {
 	}
 
 	/**
+	 * 锁IMEI
+	 * 
+	 * @author zj
+	 * @date 2019年3月4日
+	 */
+	@FXML
+	private void lockImeiOcr() {
+
+		Mat m = new Mat();
+		Mat filtered = new Mat();
+		Mat thresholdImg = new Mat();
+		
+		Mat filtered2 = new Mat();
+		Mat thresholdImg2 = new Mat();
+		Mat dilated_edges = new Mat();
+		
+		Mat cutMat=new Mat();
+
+		this.grayimage.copyTo(m);
+
+		m.copyTo(filtered);
+		// 滤波，模糊处理，消除某些背景干扰信息
+		Imgproc.blur(m, filtered, new Size(1, 1));
+
+		// 腐蚀操作，消除某些背景干扰信息
+		// Imgproc.erode(filtered, filtered, new Mat(), new Point(-1, -1), 1);// 1, 1);
+
+		// double maxgrayval = getMaxthresh(m);
+		double maxgrayval = 40;// getthresh(m);
+		System.out.println("maxgrayval:" + maxgrayval);
+
+		// Imgproc.equalizeHist(filtered, filtered);
+
+		// int thresh_type = Imgproc.THRESH_BINARY_INV; //反转
+		int thresh_type = Imgproc.THRESH_OTSU;// 前后背景区分
+		// threshValue
+		// 双值化图像
+		double to = 255;
+		Imgproc.threshold(filtered, thresholdImg, maxgrayval * 3 / 4, to, thresh_type);
+
+		// double f=200;
+		// to=220;
+		// Imgproc.threshold(filtered, thresholdImg, f, to, thresh_type);
+
+		cutMat=preCamcuIMEI(thresholdImg);
+
+		savetoImg(cutMat, "lock_thresholdImg");
+		
+		//cutMat
+		Imgproc.cvtColor(cutMat, filtered2, Imgproc.COLOR_BGR2GRAY);
+		//对有裁剪的重新计算二值化，剔除高光等
+		 
+		Imgproc.threshold(filtered2, thresholdImg2, maxgrayval * 3 / 4, to, thresh_type);
+		
+		savetoImg(thresholdImg2, "lock_thresholdImg2");
+		
+		Mat rectM_tp = new Mat();
+		cutMat.copyTo(rectM_tp);
+		Mat transMat_tp = new Mat();
+		Rect r_tp = doContours(thresholdImg2, rectM_tp, transMat_tp);
+		
+		savetoImg(rectM_tp, "rectM_tp");
+		
+		 //图像横竖判断。
+		 if(	r_tp.width!= 0 && r_tp.height != 0&&r_tp.width<r_tp.height)
+		 {
+			 //竖着拍的，
+			 //翻转图像
+
+				Point center =new Point(cutMat.width()/2.0,cutMat.height()/2.0);
+				Mat affineTrans=Imgproc.getRotationMatrix2D(center, 85.0, 1.0);
+				
+				Imgproc.warpAffine(cutMat, cutMat, affineTrans, cutMat.size(),Imgproc.INTER_NEAREST);
+				savetoImg(cutMat, "lock_thresholdImg2_rate");
+				
+				//cutMat
+				Imgproc.cvtColor(cutMat, filtered2, Imgproc.COLOR_BGR2GRAY);
+				//对有裁剪的重新计算二值化，剔除高光等
+				 
+				Imgproc.threshold(filtered2, thresholdImg2, maxgrayval * 3 / 4, to, thresh_type);
+				
+				
+		 }
+		
+		
+		
+		/*
+		 * if(true) return;
+		 */
+
+		Mat rectM = new Mat();
+		cutMat.copyTo(rectM);
+		Mat rectM2 = new Mat();
+		cutMat.copyTo(rectM2);
+
+		// 变换参数
+		Mat transMat = new Mat();
+
+		// 截取证件区域数据并进行透视变换为 垂直视角
+		Mat realRect = new Mat();
+		// Imgproc. warpPerspective(new Mat(rectM2, r),realRect,transMat,new
+		// Size(r.width,r.height), Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
+
+		Rect r = doContours(thresholdImg2, rectM, transMat);
+		
+		 //图像横竖判断。
+		 if(r.width<r.height)
+		 {
+			 //竖着拍的，
+			 //翻转图像
+
+				Point center =new Point(thresholdImg2.width()/2.0,thresholdImg2.height()/2.0);
+				Mat affineTrans=Imgproc.getRotationMatrix2D(center, 90.0, 1.0);
+				
+				Imgproc.warpAffine(thresholdImg2, thresholdImg2, affineTrans, thresholdImg2.size(),Imgproc.INTER_NEAREST);
+				savetoImg(thresholdImg2, "lock_thresholdImg2_rate");
+				 r = doContours(thresholdImg2, rectM, transMat);
+		 }
+		
+		
+		if (r.width == 0 && r.height == 0) {
+			// 轮廓计算失败
+			r.width = filtered.width();
+
+			r.height = filtered.height();
+
+			rectM2.copyTo(realRect);
+		} else {
+			// 轮廓ok,变换原图
+
+			// Imgproc.warpPerspective(rectM2, realRect, transMat, rectM2.size(),
+			// Imgproc.INTER_LINEAR); // +
+			// Imgproc.WARP_INVERSE_MAP
+			//
+
+			// 轮廓ok,变换原图
+			Imgproc.warpPerspective(rectM2, realRect, transMat, rectM2.size(),
+					Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
+		}
+
+		Imgproc.cvtColor(dilated_edges, dilated_edges, Imgproc.COLOR_GRAY2BGR);
+		Mat stepM = new Mat();
+		dilated_edges.copyTo(stepM);
+
+		Imgproc.rectangle(rectM, r.tl(), r.br(), new Scalar(0, 0, 255), 2);
+
+		showImg(originalImage2, rectM);
+
+		Mat idcarmat = new Mat(realRect, r);
+
+		showImg(originalImage3, idcarmat);
+
+		// 放大
+		if (idcarmat.width() < 500)
+			Imgproc.pyrUp(idcarmat, idcarmat);
+
+		// doCardReg(idcarmat);
+
+		ocrSimple(idcarmat);
+
+	}
+
+	/**
+	 * 通过投影计算<br>
+	 * 提出图片中包含imei的一大块方形白色区域<br>
+	 * 剔除高光/拍摄的边角等
+	 * 
+	 * @param input
+	 *            输入为二值化后的预处理图片
+	 * @return
+	 * @author zj
+	 * @date 2019年3月5日
+	 */
+	private Mat preCamcuIMEI(Mat input) {
+
+		Mat m = new Mat();
+		Mat idcarmat = new Mat();
+		this.image.copyTo(m);
+
+		Mat yhist = new Mat();
+		List<Rect> rects = canyForImei(input, yhist);
+
+		// Mat xhist = new Mat();
+		// List<Rect> rectxs = canx(input, xhist);
+
+		showImg(antitransformedImage, yhist);
+		
+		
+		if(rects.size()>0)
+		{
+			//上下增加一下剪切高度 100px，左右缩短宽度
+			int pluswidth=100;
+			Rect r=new Rect(rects.get(0).x+pluswidth,rects.get(0).y-pluswidth,rects.get(0).width-2*pluswidth,rects.get(0).height+2*pluswidth);
+			
+		 idcarmat = new Mat(m,  r);
+		 
+		
+		 
+		 
+		}
+		else
+			idcarmat=m;
+		
+		
+
+		// showImg(transformedImage2, xhist);
+
+		return idcarmat;
+	}
+
+	/**
+	 * 计算xy投影 针对锁的IMEI特定图形 ，剔除高光等影响
+	 * 
+	 * 输入二值化/rect切割好的证件图片
+	 * 
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	private List<Rect> canyForImei(Mat input, Mat output) {
+
+		int imgheight = input.height();
+		int imgwidth = input.width();
+
+		Double max = 0D;
+		Mat hist = canyStepOne(input, output, max);
+
+		for (int j = 0; j < imgheight; j++) {
+			double num = hist.get(0, j)[0];
+			if (max < num)
+				max = num;
+		}
+
+		// 计算纵向区域
+		List<Rect> rects = new ArrayList<>();
+		boolean isstart = false;
+
+		double start_val1 = 0;// 前一个y值
+		double start_val2 = 0;// 后一个y值
+		int startj = 0; // 确定一行开始的y值
+		double startv=0;//开始行的值
+		
+		double rate = 10;// 第二行超第一行的倍数
+		double minrate = 0.01;
+
+		int times = 0;
+		int maxtimes = 5;// 像素值突然增大为区域开始
+		boolean isend = false;
+		for (int j = 0; j < imgheight; j++) {
+			double num = hist.get(0, j)[0];
+
+			if (!isstart) {
+				// 假设开始
+
+				if (start_val1 == 0)
+					start_val1 = num;
+				else {
+
+					start_val1 = start_val2;
+					start_val2 = num;
+
+					// 找到开始
+					if (j > 100 &&j<imgheight-100 && start_val1 / start_val2 > 1 && start_val2 < max * 2 / 3) {
+
+						isstart = true;
+						startj = j;
+						startv=num;
+						Rect r = new Rect(0, j, imgwidth, 0);
+
+						rects.add(r);
+					} else {
+						// 重新开始计算 第一个y
+						// start_val1 = num;
+					}
+				}
+
+			} else {
+
+				if (start_val1 == 0)
+					start_val1 = num;
+				else {
+					start_val1 = start_val2;
+					start_val2 = num;
+
+					if (Math.abs(startv - start_val2) < 35)
+						times++;// 前后相差不多，计数
+					else {
+
+						//差距开始变大
+						
+						if (times > 100&& start_val2>start_val1) // 连续40个相差不大 ,开始增加
+						{
+							isend = true;
+						
+							isstart = false;
+							isend = false;
+							start_val1 = 0;
+
+							// 更新当前找到的行
+							Rect r = rects.get(rects.size() - 1);
+							r.height = j - startj;
+							rects.remove(rects.size() - 1);
+							rects.add(r);
+							
+							times=0;//归0
+							
+						} else {
+						
+							//重新开始计算
+							isstart=false;
+							times = 0;// 相差过大，重新开始
+							
+							
+							Rect r = rects.get(rects.size() - 1);
+							if(r.height<50)
+								rects.remove(rects.size() - 1);
+							
+							
+							/*
+							// 找到开始
+							if (j > 100 &&j<imgheight-100&& start_val1 / start_val2 > 1 && start_val2 < max * 2 / 3) {
+
+							
+							times = 0;// 相差过大，重新开始
+							startv=num;
+							isstart = true;
+							startj = j;
+							// 从新寻找
+							Rect r = rects.get(rects.size() - 1);
+							rects.remove(rects.size() - 1);
+							rects.add(r);
+							}
+							continue;*/
+						}
+
+					}
+				}
+
+			}
+
+		}
+		
+		Rect r = rects.get(rects.size() - 1);
+		if(r.height<50)
+			rects.remove(rects.size() - 1);
+		
+		
+		//特殊处理 对于拍照无边框，比较贴近的，有多个计算结果的，直接合并所有区域
+		if(rects.size()>1)
+		{
+			Rect rall=new Rect(rects.get(0).x,rects.get(0).y,rects.get(0).width,rects.get(rects.size()-1).y+rects.get(rects.size()-1).height-rects.get(0).y);
+			
+			rects.clear();
+			rects.add(rall);
+		}
+		
+		
+		
+
+		return rects;
+
+	}
+
+	@FXML
+	private void ocrSimple(Mat pic) {
+
+		// File imageFile = new File("eurotext.tif");
+		ITesseract instance = new Tesseract(); // JNA Interface Mapping
+		// ITesseract instance = new Tesseract1(); // JNA Direct Mapping
+		// File tessDataFolder = LoadLibs.extractTessResources("tessdata"); // Maven
+		// build bundles English data
+		File tessDataFolder = new File("F:\\Program Files (x86)\\Tesseract-OCR\\tessdata");
+		instance.setDatapath(tessDataFolder.getPath());
+		instance.setLanguage("chi_sim");
+
+		BufferedImage bimage_id = (BufferedImage) HighGui.toBufferedImage(pic);
+
+		String id = "error";
+		try {
+			id = instance.doOCR(bimage_id);
+		} catch (TesseractException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		// isok = Imgcodecs.imwrite(f.getAbsolutePath() + "\\" + "id" + ".jpg", m_id);
+
+		String output = id;// "name:" + name + "\r\n";
+		// output += "addr:" + addr + "\r\n";
+		// output += "id:" + id + "\r\n";
+		System.out.println(output);
+
+		transformedImage.setVisible(false);
+		txtinfo.setText(output);
+
+	}
+
+	/**
 	 * 二值化选择边框，计算身份证
 	 * 
 	 * @author zj
@@ -1541,18 +1937,21 @@ public class FourierController {
 	}
 
 	/**
-	 * 计算xy投影
+	 * 单纯计算y投影。
 	 * 
-	 * 输入二值化/rect切割好的证件图片
-	 * 
+	 * @param input
+	 *            ,output, 直接显示的图形
+	 * @return 单独一维数据mat
 	 * @author zj
-	 * @date 2018年8月7日
+	 * @date 2019年3月5日
 	 */
-	private List<Rect> cany(Mat input, Mat output) {
+	private Mat canyStepOne(Mat input, Mat output, Double Maxnum) {
+
+		// Mat output = new Mat();
 
 		int imgheight = input.height();
 		int imgwidth = input.width();
-
+		// 存储y轴 左右投影
 		Mat hist = new Mat(1, imgheight, CvType.CV_32FC1);
 
 		Core.normalize(hist, hist, 0, hist.rows(), Core.NORM_MINMAX, -1, new Mat());
@@ -1576,11 +1975,15 @@ public class FourierController {
 					int k = 0;
 				}
 			}
+			// 计算最大的y投影，后续计算最大显示宽度使用
 			double num = hist.get(0, i)[0];
 			if (num > max)
 				max = num;
 		}
 
+		Maxnum = max;
+
+		// 显示y轴投影
 		Mat hist2 = new Mat(imgheight, imgwidth, CvType.CV_8UC1);
 
 		Core.normalize(hist2, hist2, 0, hist2.rows(), Core.NORM_MINMAX, -1, new Mat());
@@ -1602,13 +2005,32 @@ public class FourierController {
 
 		hist2.copyTo(output);
 
+		return hist;
+	}
+
+	/**
+	 * 计算xy投影
+	 * 
+	 * 输入二值化/rect切割好的证件图片
+	 * 
+	 * @author zj
+	 * @date 2018年8月7日
+	 */
+	private List<Rect> cany(Mat input, Mat output) {
+
+		int imgheight = input.height();
+		int imgwidth = input.width();
+
+		Double max = 0D;
+		Mat hist = canyStepOne(input, output, max);
+
 		// 计算纵向区域
 		List<Rect> rects = new ArrayList<>();
 		boolean isstart = false;
 
-		double start_val1 = 0;
-		double start_val2 = 0;
-		int startj = 0;
+		double start_val1 = 0;// 前一个y值
+		double start_val2 = 0;// 后一个y值
+		int startj = 0; // 确定一行开始的y值
 		double rate = 10;// 第二行超第一行的倍数
 		double minrate = 0.01;
 
@@ -1631,7 +2053,7 @@ public class FourierController {
 							isstart = true;
 
 						} else {
-							// 重新开始计算
+							// 重新开始计算 第一个y
 							start_val1 = num;
 						}
 					}
@@ -1673,6 +2095,7 @@ public class FourierController {
 					isend = false;
 					start_val1 = 0;
 
+					// 更新当前找到的行
 					Rect r = rects.get(rects.size() - 1);
 					r.height = j - startj;
 					rects.remove(rects.size() - 1);
@@ -1907,20 +2330,21 @@ public class FourierController {
 		 * double threshmin=mean*0.44; double threshmax=mean*1.33;
 		 */
 
+		// 奥巴马头像检查 17-17*3
 		double threshmin = thresh;
 		double threshmax = threshmin * 3;
 
 		System.out.println("*****mean:" + mean + "/threshmin:" + threshmin + "/threshmax:" + threshmax);
 
-		// 边缘检测
+		// 图像线条化处理
 		Imgproc.Canny(filtered, edges, threshmin, threshmax);
 
-		// savetoImg(edges, "blur_33_erode_edges");
+		savetoImg(edges, "blur_33_erode_edges");
 
 		// show the image
 		// showImg(antitransformedImage, edges);
 
-		// 膨胀操作，尽量使边缘闭合
+		// 膨胀操作，尽量使边缘闭合，使图片最外层的边框变得明显，方便后续从线图中取出最外层的边框。
 		Imgproc.dilate(edges, dilated_edges, new Mat(), new Point(-1, -1), 3);// , 1, 1);
 
 		Mat transMat = new Mat();
@@ -2092,6 +2516,12 @@ public class FourierController {
 						// 矩形变换 获取 规则->不规则
 						Mat tp = Imgproc.getPerspectiveTransform(rectMat_dest, rectMat_src);
 						tp.copyTo(transMat);
+						
+						
+						//只计算第一个有效矩形
+						//只计算第一个找到的矩形
+						//锁匠IMEI识别测试
+						break;
 
 						// 使用变换
 						// Imgproc. warpPerspective(dilated_edges,outtransMat,tp,dilated_edges.size(),
@@ -2100,6 +2530,10 @@ public class FourierController {
 					}
 				}
 			}
+			
+			
+			//break;
+			
 		}
 
 		// savetoImg(dilated_edges, "contour");

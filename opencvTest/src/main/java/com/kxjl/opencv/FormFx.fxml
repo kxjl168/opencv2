@@ -93,7 +93,10 @@
 						<padding>
 							<Insets right="10" left="10" />
 						</padding>
-
+	
+			<VBox alignment="BOTTOM_CENTER" spacing="5">
+					<TextArea  fx:id="txtinfo"  ></TextArea>
+			</VBox>
 						<ImageView fx:id="antitransformedImage" />
 						<ImageView fx:id="antitransformedImage2" />
 						<ImageView fx:id="antitransformedImage3" />
@@ -164,6 +167,7 @@
 <Button alignment="center" text="hsvRage" onAction="#hsv" />
 
 
+<Button alignment="center" text="锁IMEI识别" onAction="#lockImeiOcr" />
 
 
 
