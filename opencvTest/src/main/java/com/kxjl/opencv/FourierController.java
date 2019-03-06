@@ -1242,12 +1242,12 @@ public class FourierController {
 		Mat m = new Mat();
 		Mat filtered = new Mat();
 		Mat thresholdImg = new Mat();
-		
+
 		Mat filtered2 = new Mat();
 		Mat thresholdImg2 = new Mat();
 		Mat dilated_edges = new Mat();
-		
-		Mat cutMat=new Mat();
+
+		Mat cutMat = new Mat();
 
 		this.grayimage.copyTo(m);
 
@@ -1275,48 +1275,44 @@ public class FourierController {
 		// to=220;
 		// Imgproc.threshold(filtered, thresholdImg, f, to, thresh_type);
 
-		cutMat=preCamcuIMEI(thresholdImg);
+		cutMat = preCamcuIMEI(thresholdImg);
 
 		savetoImg(cutMat, "lock_thresholdImg");
-		
-		//cutMat
+
+		// cutMat
 		Imgproc.cvtColor(cutMat, filtered2, Imgproc.COLOR_BGR2GRAY);
-		//对有裁剪的重新计算二值化，剔除高光等
-		 
+		// 对有裁剪的重新计算二值化，剔除高光等
+
 		Imgproc.threshold(filtered2, thresholdImg2, maxgrayval * 3 / 4, to, thresh_type);
-		
+
 		savetoImg(thresholdImg2, "lock_thresholdImg2");
-		
+
 		Mat rectM_tp = new Mat();
 		cutMat.copyTo(rectM_tp);
 		Mat transMat_tp = new Mat();
 		Rect r_tp = doContours(thresholdImg2, rectM_tp, transMat_tp);
-		
-		savetoImg(rectM_tp, "rectM_tp");
-		
-		 //图像横竖判断。
-		 if(	r_tp.width!= 0 && r_tp.height != 0&&r_tp.width<r_tp.height)
-		 {
-			 //竖着拍的，
-			 //翻转图像
 
-				Point center =new Point(cutMat.width()/2.0,cutMat.height()/2.0);
-				Mat affineTrans=Imgproc.getRotationMatrix2D(center, 85.0, 1.0);
-				
-				Imgproc.warpAffine(cutMat, cutMat, affineTrans, cutMat.size(),Imgproc.INTER_NEAREST);
-				savetoImg(cutMat, "lock_thresholdImg2_rate");
-				
-				//cutMat
-				Imgproc.cvtColor(cutMat, filtered2, Imgproc.COLOR_BGR2GRAY);
-				//对有裁剪的重新计算二值化，剔除高光等
-				 
-				Imgproc.threshold(filtered2, thresholdImg2, maxgrayval * 3 / 4, to, thresh_type);
-				
-				
-		 }
-		
-		
-		
+		savetoImg(rectM_tp, "rectM_tp");
+
+		// 图像横竖判断。
+		if (r_tp.width != 0 && r_tp.height != 0 && r_tp.width < r_tp.height) {
+			// 竖着拍的，
+			// 翻转图像
+
+			Point center = new Point(cutMat.width() / 2.0, cutMat.height() / 2.0);
+			Mat affineTrans = Imgproc.getRotationMatrix2D(center, 85.0, 1.0);
+
+			Imgproc.warpAffine(cutMat, cutMat, affineTrans, cutMat.size(), Imgproc.INTER_NEAREST);
+			savetoImg(cutMat, "lock_thresholdImg2_rate");
+
+			// cutMat
+			Imgproc.cvtColor(cutMat, filtered2, Imgproc.COLOR_BGR2GRAY);
+			// 对有裁剪的重新计算二值化，剔除高光等
+
+			Imgproc.threshold(filtered2, thresholdImg2, maxgrayval * 3 / 4, to, thresh_type);
+
+		}
+
 		/*
 		 * if(true) return;
 		 */
@@ -1335,22 +1331,20 @@ public class FourierController {
 		// Size(r.width,r.height), Imgproc.INTER_LINEAR + Imgproc.WARP_INVERSE_MAP);
 
 		Rect r = doContours(thresholdImg2, rectM, transMat);
-		
-		 //图像横竖判断。
-		 if(r.width<r.height)
-		 {
-			 //竖着拍的，
-			 //翻转图像
 
-				Point center =new Point(thresholdImg2.width()/2.0,thresholdImg2.height()/2.0);
-				Mat affineTrans=Imgproc.getRotationMatrix2D(center, 90.0, 1.0);
-				
-				Imgproc.warpAffine(thresholdImg2, thresholdImg2, affineTrans, thresholdImg2.size(),Imgproc.INTER_NEAREST);
-				savetoImg(thresholdImg2, "lock_thresholdImg2_rate");
-				 r = doContours(thresholdImg2, rectM, transMat);
-		 }
-		
-		
+		// 图像横竖判断。
+		if (r.width < r.height) {
+			// 竖着拍的，
+			// 翻转图像
+
+			Point center = new Point(thresholdImg2.width() / 2.0, thresholdImg2.height() / 2.0);
+			Mat affineTrans = Imgproc.getRotationMatrix2D(center, 90.0, 1.0);
+
+			Imgproc.warpAffine(thresholdImg2, thresholdImg2, affineTrans, thresholdImg2.size(), Imgproc.INTER_NEAREST);
+			savetoImg(thresholdImg2, "lock_thresholdImg2_rate");
+			r = doContours(thresholdImg2, rectM, transMat);
+		}
+
 		if (r.width == 0 && r.height == 0) {
 			// 轮廓计算失败
 			r.width = filtered.width();
@@ -1381,7 +1375,8 @@ public class FourierController {
 
 		Mat idcarmat = new Mat(realRect, r);
 
-		showImg(originalImage3, idcarmat);
+		transformedImage.setVisible(true);
+		showImg(antitransformedImage, idcarmat);
 
 		// 放大
 		if (idcarmat.width() < 500)
@@ -1416,25 +1411,18 @@ public class FourierController {
 		// Mat xhist = new Mat();
 		// List<Rect> rectxs = canx(input, xhist);
 
-		showImg(antitransformedImage, yhist);
-		
-		
-		if(rects.size()>0)
-		{
-			//上下增加一下剪切高度 100px，左右缩短宽度
-			int pluswidth=100;
-			Rect r=new Rect(rects.get(0).x+pluswidth,rects.get(0).y-pluswidth,rects.get(0).width-2*pluswidth,rects.get(0).height+2*pluswidth);
-			
-		 idcarmat = new Mat(m,  r);
-		 
-		
-		 
-		 
-		}
-		else
-			idcarmat=m;
-		
-		
+		showImg(antitransformedImage2, yhist);
+
+		if (rects.size() > 0) {
+			// 上下增加一下剪切高度 100px，左右缩短宽度
+			int pluswidth = 100;
+			Rect r = new Rect(rects.get(0).x + pluswidth, rects.get(0).y - pluswidth,
+					rects.get(0).width - 2 * pluswidth, rects.get(0).height + 2 * pluswidth);
+
+			idcarmat = new Mat(m, r);
+
+		} else
+			idcarmat = m;
 
 		// showImg(transformedImage2, xhist);
 
@@ -1455,6 +1443,7 @@ public class FourierController {
 		int imgwidth = input.width();
 
 		Double max = 0D;
+		// 单纯计算y投影
 		Mat hist = canyStepOne(input, output, max);
 
 		for (int j = 0; j < imgheight; j++) {
@@ -1470,10 +1459,7 @@ public class FourierController {
 		double start_val1 = 0;// 前一个y值
 		double start_val2 = 0;// 后一个y值
 		int startj = 0; // 确定一行开始的y值
-		double startv=0;//开始行的值
-		
-		double rate = 10;// 第二行超第一行的倍数
-		double minrate = 0.01;
+		double startv = 0;// 开始行的值
 
 		int times = 0;
 		int maxtimes = 5;// 像素值突然增大为区域开始
@@ -1481,113 +1467,77 @@ public class FourierController {
 		for (int j = 0; j < imgheight; j++) {
 			double num = hist.get(0, j)[0];
 
+			start_val1 = start_val2;
+			start_val2 = num;
+
 			if (!isstart) {
+
 				// 假设开始
+				// 找到开始 ,剔除开头/结尾，图片位于图像当中
+				if (j > 100 && j < imgheight - 100 && start_val1 / start_val2 > 1 && start_val2 < max * 2 / 3) {
 
-				if (start_val1 == 0)
-					start_val1 = num;
-				else {
+					isstart = true;
+					startj = j;
+					startv = num;
+					Rect r = new Rect(0, j, imgwidth, 0);
 
-					start_val1 = start_val2;
-					start_val2 = num;
-
-					// 找到开始
-					if (j > 100 &&j<imgheight-100 && start_val1 / start_val2 > 1 && start_val2 < max * 2 / 3) {
-
-						isstart = true;
-						startj = j;
-						startv=num;
-						Rect r = new Rect(0, j, imgwidth, 0);
-
-						rects.add(r);
-					} else {
-						// 重新开始计算 第一个y
-						// start_val1 = num;
-					}
+					rects.add(r);
 				}
 
 			} else {
 
-				if (start_val1 == 0)
-					start_val1 = num;
+				if (Math.abs(startv - start_val2) < 35)
+					times++;// 前后相差不多，计数
 				else {
-					start_val1 = start_val2;
-					start_val2 = num;
 
-					if (Math.abs(startv - start_val2) < 35)
-						times++;// 前后相差不多，计数
-					else {
+					// 差距开始变大
+					// 满足连续一段/同时 数字开始增大
+					if (times > 100 && start_val2 > start_val1) {
+						isend = true;
 
-						//差距开始变大
-						
-						if (times > 100&& start_val2>start_val1) // 连续40个相差不大 ,开始增加
-						{
-							isend = true;
-						
-							isstart = false;
-							isend = false;
-							start_val1 = 0;
+						isstart = false;
+						isend = false;
+						start_val1 = 0;
 
-							// 更新当前找到的行
-							Rect r = rects.get(rects.size() - 1);
-							r.height = j - startj;
+						// 更新当前找到的行
+						Rect r = rects.get(rects.size() - 1);
+						r.height = j - startj;
+						rects.remove(rects.size() - 1);
+						rects.add(r);
+
+						times = 0;// 归0
+
+					} else {
+
+						// 重新开始计算
+						isstart = false;
+						times = 0;// 相差过大，重新开始
+
+						// 移除之前的添加的不满足的区域.
+						Rect r = rects.get(rects.size() - 1);
+						if (r.height < 50)
 							rects.remove(rects.size() - 1);
-							rects.add(r);
-							
-							times=0;//归0
-							
-						} else {
-						
-							//重新开始计算
-							isstart=false;
-							times = 0;// 相差过大，重新开始
-							
-							
-							Rect r = rects.get(rects.size() - 1);
-							if(r.height<50)
-								rects.remove(rects.size() - 1);
-							
-							
-							/*
-							// 找到开始
-							if (j > 100 &&j<imgheight-100&& start_val1 / start_val2 > 1 && start_val2 < max * 2 / 3) {
-
-							
-							times = 0;// 相差过大，重新开始
-							startv=num;
-							isstart = true;
-							startj = j;
-							// 从新寻找
-							Rect r = rects.get(rects.size() - 1);
-							rects.remove(rects.size() - 1);
-							rects.add(r);
-							}
-							continue;*/
-						}
 
 					}
+
 				}
 
 			}
 
 		}
-		
+
 		Rect r = rects.get(rects.size() - 1);
-		if(r.height<50)
+		if (r.height < 50)
 			rects.remove(rects.size() - 1);
-		
-		
-		//特殊处理 对于拍照无边框，比较贴近的，有多个计算结果的，直接合并所有区域
-		if(rects.size()>1)
-		{
-			Rect rall=new Rect(rects.get(0).x,rects.get(0).y,rects.get(0).width,rects.get(rects.size()-1).y+rects.get(rects.size()-1).height-rects.get(0).y);
-			
+
+		// 特殊处理 对于拍照无边框，比较贴近的，有多个计算结果的，直接合并所有区域
+		if (rects.size() > 1) {
+			Rect rall = new Rect(rects.get(0).x, rects.get(0).y, rects.get(0).width,
+					rects.get(rects.size() - 1).y + rects.get(rects.size() - 1).height - rects.get(0).y);
+
 			rects.clear();
 			rects.add(rall);
 		}
-		
-		
-		
 
 		return rects;
 
@@ -2269,6 +2219,8 @@ public class FourierController {
 	}
 
 	private void showImg(ImageView view, Mat m) {
+		view.setVisible(true);
+
 		// show the image
 		this.updateImageView(view, Utils.mat2Image(m));
 		// set a fixed width
@@ -2516,11 +2468,10 @@ public class FourierController {
 						// 矩形变换 获取 规则->不规则
 						Mat tp = Imgproc.getPerspectiveTransform(rectMat_dest, rectMat_src);
 						tp.copyTo(transMat);
-						
-						
-						//只计算第一个有效矩形
-						//只计算第一个找到的矩形
-						//锁匠IMEI识别测试
+
+						// 只计算第一个有效矩形
+						// 只计算第一个找到的矩形
+						// 锁匠IMEI识别测试
 						break;
 
 						// 使用变换
@@ -2530,10 +2481,9 @@ public class FourierController {
 					}
 				}
 			}
-			
-			
-			//break;
-			
+
+			// break;
+
 		}
 
 		// savetoImg(dilated_edges, "contour");

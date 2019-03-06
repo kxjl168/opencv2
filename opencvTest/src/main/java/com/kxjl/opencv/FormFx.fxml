@@ -95,7 +95,7 @@
 						</padding>
 	
 			<VBox alignment="BOTTOM_CENTER" spacing="5">
-					<TextArea  fx:id="txtinfo"  ></TextArea>
+					<TextArea  fx:id="txtinfo" maxHeight="20"  ></TextArea>
 			</VBox>
 						<ImageView fx:id="antitransformedImage" />
 						<ImageView fx:id="antitransformedImage2" />
