@@ -32,10 +32,10 @@
 
 	</dependencies>
 
-	<build>
+	<!-- <build>
 		<outputDirectory>target/classes</outputDirectory>
 		<plugins>
-			<!-- Compiler 插件, 设定JDK版本 -->
+			Compiler 插件, 设定JDK版本
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -61,6 +61,6 @@
      
     
 		</plugins>
-	</build>
+	</build> -->
 </project>
 
